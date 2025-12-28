@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { FaDeezer, FaMagnifyingGlassPlus } from 'react-icons/fa6';
 import { ChatMessage } from '../types';
-import { Button } from './Button';
-import { MetaCard } from './MetaCard';
 import { Badge, BadgeType } from './Badge';
 import { Tooltip } from './Tooltip';
+import { CodeBlock, parseMarkdownCodeBlocks } from './CodeBlock';
 
 interface MessageCardProps {
   message: ChatMessage;
@@ -23,6 +22,28 @@ function highlightText(text: string, searchTerm: string): React.ReactNode {
       part
     )
   );
+}
+
+function renderTextWithCodeBlocks(text: string, key: string, searchTerm?: string): React.ReactNode {
+  const parsed = parseMarkdownCodeBlocks(text);
+
+  return parsed.map((block, index) => {
+    if (block.type === 'code') {
+      return (
+        <CodeBlock
+          key={`${key}-code-${index}`}
+          code={block.content}
+          language={block.language}
+          searchTerm={searchTerm}
+        />
+      );
+    }
+    return (
+      <div key={`${key}-text-${index}`} className="content">
+        {searchTerm ? highlightText(block.content, searchTerm) : block.content}
+      </div>
+    );
+  });
 }
 
 interface ParsedMessageContent {
@@ -44,9 +65,9 @@ function parseMessage(message: ChatMessage, searchTerm?: string): ParsedMessageC
 
   if (typeof messageContent === 'string') {
     textContent.push(
-      <div key={`text-0`} className="content">
-        {searchTerm ? highlightText(messageContent, searchTerm) : messageContent}
-      </div>
+      <React.Fragment key="text-0">
+        {renderTextWithCodeBlocks(messageContent, 'msg-0', searchTerm)}
+      </React.Fragment>
     );
   } else if (Array.isArray(messageContent)) {
 
@@ -56,9 +77,9 @@ function parseMessage(message: ChatMessage, searchTerm?: string): ParsedMessageC
 
         if (typeof contentItem === 'string') {
           textContent.push(
-            <div key={`text-${itemIndex}`} className="content">
-              {searchTerm ? highlightText(contentItem, searchTerm) : contentItem}
-            </div>
+            <React.Fragment key={`text-${itemIndex}`}>
+              {renderTextWithCodeBlocks(contentItem, `msg-${itemIndex}`, searchTerm)}
+            </React.Fragment>
           );
           continue;
         }
@@ -69,28 +90,41 @@ function parseMessage(message: ChatMessage, searchTerm?: string): ParsedMessageC
               toolNames.push(contentItem.name);
             }
             toolUseContent.push(
-              <pre key={`tool-use-${itemIndex}`} >
-                {JSON.stringify(contentItem, null, 2)}
-              </pre>
+              <div key={`tool-use-${itemIndex}`} className="MessageCard__tool-use-block">
+                <div className="MessageCard__tool-name">[Tool: {contentItem.name}]</div>
+                <CodeBlock
+                  code={JSON.stringify(contentItem.input, null, 2)}
+                  language="json"
+                />
+              </div>
             );
 
             badgeType = BadgeType.Tool;
             break;
 
-          case 'tool_result':
+          case 'tool_result': {
+            // tool_result has a content property but it's not in the base type
+            const resultContent = (contentItem as { content?: unknown }).content;
             toolUseContent.push(
-              <pre key={`tool-use-${itemIndex}`} >
-                {JSON.stringify(contentItem, null, 2)}
-              </pre>
+              <div key={`tool-result-${itemIndex}`} className="MessageCard__tool-result-block">
+                <div className="MessageCard__tool-name">[Tool Result]</div>
+                <CodeBlock
+                  code={typeof resultContent === 'string'
+                    ? resultContent
+                    : JSON.stringify(resultContent, null, 2)}
+                  language={typeof resultContent === 'string' ? undefined : 'json'}
+                />
+              </div>
             );
             badgeType = BadgeType.ToolResult;
             break;
+          }
 
           case 'text':
             textContent.push(
-              <div key={`text-${itemIndex}`} className="content">
-                {searchTerm ? highlightText(contentItem?.text || '', searchTerm) : contentItem?.text}
-              </div>
+              <React.Fragment key={`text-${itemIndex}`}>
+                {renderTextWithCodeBlocks(contentItem?.text || '', `msg-${itemIndex}`, searchTerm)}
+              </React.Fragment>
             );
             break;
         }

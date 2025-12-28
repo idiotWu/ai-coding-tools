@@ -12,11 +12,12 @@ if (process.env.NODE_ENV === 'development') {
     // dotenv not available in production, which is fine
   }
 }
-import { ChatMessage, ChatSession, ProjectDirectory } from '../types';
+import { ChatMessage, ProjectDirectorySummary } from '../types';
 import { getChatSessions } from './getChatSessions';
 import { getSessionDetails } from './getSessionDetails';
 import { getAnalytics, AnalyticsData } from './getAnalytics';
-import { initializeDatabase, isDismissed, dismissNotification } from './database';
+import { initializeDatabase, isDismissed, dismissNotification, getFavorites, toggleFavorite, FavoriteSession } from './database';
+import { exportSession, ExportOptions, ExportResult } from './exportSession';
 
 let mainWindow: BrowserWindow;
 
@@ -64,7 +65,7 @@ app.on('activate', () => {
 });
 
 // IPC handlers
-ipcMain.handle('get-chat-sessions', async (): Promise<ProjectDirectory[]> => {
+ipcMain.handle('get-chat-sessions', async (): Promise<ProjectDirectorySummary[]> => {
   return await getChatSessions();
 });
 
@@ -86,4 +87,24 @@ ipcMain.handle('dismiss-notification', async (_, contentCode: string): Promise<v
 
 ipcMain.handle('get-api-hostname', async (): Promise<string> => {
   return process.env.API_HOSTNAME || 'https://api.mcp-eval.com';
+});
+
+// Export session handler
+ipcMain.handle('export-session', async (
+  _,
+  messages: ChatMessage[],
+  sessionTitle: string,
+  projectPath: string,
+  options: ExportOptions
+): Promise<ExportResult> => {
+  return await exportSession(messages, sessionTitle, projectPath, options);
+});
+
+// Favorites handlers
+ipcMain.handle('get-favorites', async (): Promise<FavoriteSession[]> => {
+  return getFavorites();
+});
+
+ipcMain.handle('toggle-favorite', async (_, sessionId: string, projectPath: string): Promise<boolean> => {
+  return toggleFavorite(sessionId, projectPath);
 });

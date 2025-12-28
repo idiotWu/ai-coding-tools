@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { VList } from 'virtua';
-import { IoClose, IoSearch } from 'react-icons/io5';
+import { IoClose, IoSearch, IoDownloadOutline } from 'react-icons/io5';
 import { ChatSessionSummary, ChatMessage } from '../types';
 import { MessageCard } from './MessageCard';
 import { LoadingSpinner } from './LoadingSpinner';
@@ -31,6 +31,8 @@ export const ChatSessionView: React.FC<ChatViewerProps> = ({ session }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     loadSessionDetails();
@@ -69,6 +71,27 @@ export const ChatSessionView: React.FC<ChatViewerProps> = ({ session }) => {
     const term = searchTerm.toLowerCase();
     return messages.filter(msg => getMessageText(msg).toLowerCase().includes(term));
   }, [messages, searchTerm]);
+
+  const handleExport = async (format: 'markdown' | 'json') => {
+    setExporting(true);
+    setShowExportMenu(false);
+    try {
+      const sessionTitle = session.firstUserMessage.slice(0, 50) || `Session ${session.sessionId}`;
+      const result = await window.electronAPI.exportSession(
+        messages,
+        sessionTitle,
+        session.projectPath,
+        { format, includeToolCalls: true, includeTimestamps: true }
+      );
+      if (!result.success && result.error !== 'Export cancelled') {
+        console.error('Export failed:', result.error);
+      }
+    } catch (err) {
+      console.error('Export error:', err);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -112,6 +135,27 @@ export const ChatSessionView: React.FC<ChatViewerProps> = ({ session }) => {
             <span className="ChatViewer__search-count">
               {filteredMessages.length}/{messages.length}
             </span>
+          )}
+        </div>
+        <div className="ChatViewer__export">
+          <button
+            className="ChatViewer__export-btn"
+            onClick={() => setShowExportMenu(!showExportMenu)}
+            disabled={exporting}
+            title="Export session"
+          >
+            <IoDownloadOutline />
+            {exporting ? 'Exporting...' : 'Export'}
+          </button>
+          {showExportMenu && (
+            <div className="ChatViewer__export-menu">
+              <button onClick={() => handleExport('markdown')}>
+                Export as Markdown
+              </button>
+              <button onClick={() => handleExport('json')}>
+                Export as JSON
+              </button>
+            </div>
           )}
         </div>
       </div>
