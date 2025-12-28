@@ -261,8 +261,15 @@ h1, h2, h3, h4, h5, h6 {
 .ChatList {
   padding: $spacing-xl;
   height: 100%;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background-color: $color-bg-secondary;
+
+  .ChatList__vlist {
+    flex: 1;
+    overflow: auto;
+  }
   
   .ChatList__header {
     margin-top: 0;
@@ -334,85 +341,82 @@ h1, h2, h3, h4, h5, h6 {
     font-size: $font-size-md;
   }
   
-  .ChatList__project {
-    margin-bottom: $spacing-xl;
-    
-    .ChatList__project-header {
-      font-size: $font-size-md;
-      color: $color-text-primary;
-      margin-bottom: $spacing-md;
-      border-bottom: 1px solid $color-border-primary;
-      padding-bottom: $spacing-sm;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      user-select: none;
-      transition: all $transition-fast;
-      
-      &:hover {
-        color: $color-primary;
-      }
-      
-      .ChatList__project-arrow {
-        margin-right: $spacing-sm;
-        font-size: $font-size-xs;
-        color: $color-text-tertiary;
-        transition: transform $transition-fast;
-        
-        &--expanded {
-          transform: rotate(90deg);
-        }
-      }
-      
-      .ChatList__project-name {
-        font-weight: $font-weight-medium;
-      }
-      
-      .ChatList__project-count {
-        margin-left: $spacing-md;
-        font-size: $font-size-xs;
-        color: $color-text-tertiary;
-        font-weight: $font-weight-normal;
+  .ChatList__project-header {
+    font-size: $font-size-md;
+    color: $color-text-primary;
+    margin-bottom: $spacing-md;
+    border-bottom: 1px solid $color-border-primary;
+    padding-bottom: $spacing-sm;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    user-select: none;
+    transition: all $transition-fast;
+
+    &:hover {
+      color: $color-primary;
+    }
+
+    .ChatList__project-arrow {
+      margin-right: $spacing-sm;
+      font-size: $font-size-xs;
+      color: $color-text-tertiary;
+      transition: transform $transition-fast;
+
+      &--expanded {
+        transform: rotate(90deg);
       }
     }
-    
-    .ChatList__session {
-      background-color: $color-bg-primary;
-      border: 1px solid $color-border-primary;
-      border-radius: $radius-lg;
-      padding: $spacing-lg;
-      margin-bottom: $spacing-md;
-      cursor: pointer;
-      transition: all $transition-fast;
-      box-shadow: $shadow-card;
-      display: block;
+
+    .ChatList__project-name {
+      font-weight: $font-weight-medium;
+    }
+
+    .ChatList__project-count {
+      margin-left: $spacing-md;
+      font-size: $font-size-xs;
+      color: $color-text-tertiary;
+      font-weight: $font-weight-normal;
+    }
+  }
+
+  .ChatList__session {
+    background-color: $color-bg-primary;
+    border: 1px solid $color-border-primary;
+    border-radius: $radius-lg;
+    padding: $spacing-lg;
+    margin-bottom: $spacing-md;
+    margin-left: $spacing-lg;
+    cursor: pointer;
+    transition: all $transition-fast;
+    box-shadow: $shadow-card;
+    display: block;
+    text-decoration: none;
+    color: inherit;
+
+    &:hover {
+      border-color: $color-border-hover;
+      box-shadow: $shadow-md;
       text-decoration: none;
       color: inherit;
-      
-      &:hover {
-        border-color: $color-border-hover;
-        box-shadow: $shadow-md;
-        text-decoration: none;
-        color: inherit;
-      }
-      
-      &:visited {
-        color: inherit;
-      }
-      
-      .ChatList__session-content {
-        font-size: $font-size-sm;
-        color: $color-text-primary;
-        margin-bottom: $spacing-sm;
-        line-height: $line-height-normal;
-      }
-      
-      .ChatList__session-meta {
-        display: flex;
-        justify-content: space-between;
-        font-size: $font-size-xs;
-        color: $color-text-tertiary;
-      }
+    }
+
+    &:visited {
+      color: inherit;
+    }
+
+    .ChatList__session-content {
+      font-size: $font-size-sm;
+      color: $color-text-primary;
+      margin-bottom: $spacing-sm;
+      line-height: $line-height-normal;
+    }
+
+    .ChatList__session-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: $font-size-xs;
+      color: $color-text-tertiary;
     }
   }
 }
@@ -571,6 +575,13 @@ h1, h2, h3, h4, h5, h6 {
     color: $color-text-tertiary;
     margin-top: $spacing-md;
   }
+
+  .search-highlight {
+    background-color: #fef08a;
+    color: #1a1a1a;
+    padding: 1px 2px;
+    border-radius: 2px;
+  }
 }
 
 // Badge Component
@@ -620,26 +631,92 @@ h1, h2, h3, h4, h5, h6 {
   background-color: $color-bg-secondary;
   overflow: hidden;
 
-  .ChatViewer__header {
+  .ChatViewer__toolbar {
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-lg;
+    padding: $spacing-sm $spacing-lg;
     background-color: $color-bg-primary;
-    padding: $spacing-xl;
     border-bottom: 1px solid $color-border-primary;
+  }
+
+  .ChatViewer__info {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    min-width: 0;
+    flex: 1;
 
     .ChatViewer__title {
-      margin: 0;
-      margin-bottom: $spacing-md;
-      font-size: $font-size-2xl;
+      font-size: $font-size-sm;
       font-weight: $font-weight-semibold;
+      color: $color-text-primary;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .ChatViewer__meta {
-      font-size: $font-size-sm;
-      color: $color-text-secondary;
+      font-size: $font-size-xs;
+      color: $color-text-tertiary;
+      white-space: nowrap;
+    }
+  }
 
-      > div {
-        margin-bottom: $spacing-xs;
+  .ChatViewer__search {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    flex-shrink: 0;
+
+    .ChatViewer__search-icon {
+      color: $color-text-tertiary;
+      font-size: $font-size-sm;
+    }
+
+    .ChatViewer__search-input {
+      width: 160px;
+      padding: $spacing-xs $spacing-sm;
+      border: 1px solid $color-border-primary;
+      border-radius: $radius-sm;
+      font-size: $font-size-xs;
+      background-color: $color-bg-secondary;
+      color: $color-text-primary;
+
+      &:focus {
+        outline: none;
+        border-color: $color-primary;
+        width: 200px;
       }
+
+      &::placeholder {
+        color: $color-text-tertiary;
+      }
+    }
+
+    .ChatViewer__search-clear {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px;
+      background: none;
+      border: none;
+      color: $color-text-secondary;
+      cursor: pointer;
+      border-radius: $radius-sm;
+
+      &:hover {
+        background-color: $color-bg-tertiary;
+        color: $color-text-primary;
+      }
+    }
+
+    .ChatViewer__search-count {
+      font-size: $font-size-xs;
+      color: $color-text-tertiary;
+      white-space: nowrap;
     }
   }
 

@@ -47,6 +47,16 @@ module.exports = {
     port: process.env.RENDERER_PORT || 3447,
     hot: true,
     historyApiFallback: true,
+    client: {
+      overlay: {
+        runtimeErrors: (error) => {
+          if (error.message && error.message.includes('ResizeObserver')) {
+            return false;
+          }
+          return true;
+        },
+      },
+    },
   },
   devtool: process.env.NODE_ENV === 'production' ? false : 'source-map',
 };

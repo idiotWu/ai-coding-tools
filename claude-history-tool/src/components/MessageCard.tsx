@@ -8,6 +8,21 @@ import { Tooltip } from './Tooltip';
 
 interface MessageCardProps {
   message: ChatMessage;
+  searchTerm?: string;
+}
+
+function highlightText(text: string, searchTerm: string): React.ReactNode {
+  if (!searchTerm.trim()) return text;
+
+  const parts = text.split(new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
+
+  return parts.map((part, i) =>
+    part.toLowerCase() === searchTerm.toLowerCase() ? (
+      <mark key={i} className="search-highlight">{part}</mark>
+    ) : (
+      part
+    )
+  );
 }
 
 interface ParsedMessageContent {
@@ -17,9 +32,9 @@ interface ParsedMessageContent {
   toolNames: string[];
 }
 
-function parseMessage(message: ChatMessage): ParsedMessageContent {
-  let textContent: Array<any> = [];
-  const toolUseContent: Array<any> = [];
+function parseMessage(message: ChatMessage, searchTerm?: string): ParsedMessageContent {
+  const textContent: Array<React.ReactNode> = [];
+  const toolUseContent: Array<React.ReactNode> = [];
   const toolNames: string[] = [];
 
   let badgeType: BadgeType =
@@ -30,19 +45,19 @@ function parseMessage(message: ChatMessage): ParsedMessageContent {
   if (typeof messageContent === 'string') {
     textContent.push(
       <div key={`text-0`} className="content">
-        {messageContent}
+        {searchTerm ? highlightText(messageContent, searchTerm) : messageContent}
       </div>
     );
   } else if (Array.isArray(messageContent)) {
 
       let itemIndex = 0;
       for (const contentItem of messageContent) {
-        itemIndex++;  
+        itemIndex++;
 
         if (typeof contentItem === 'string') {
           textContent.push(
             <div key={`text-${itemIndex}`} className="content">
-              {contentItem}
+              {searchTerm ? highlightText(contentItem, searchTerm) : contentItem}
             </div>
           );
           continue;
@@ -70,11 +85,11 @@ function parseMessage(message: ChatMessage): ParsedMessageContent {
             );
             badgeType = BadgeType.ToolResult;
             break;
-  
+
           case 'text':
             textContent.push(
               <div key={`text-${itemIndex}`} className="content">
-                {contentItem?.text}
+                {searchTerm ? highlightText(contentItem?.text || '', searchTerm) : contentItem?.text}
               </div>
             );
             break;
@@ -102,8 +117,8 @@ function parseMessage(message: ChatMessage): ParsedMessageContent {
   };
 }
 
-export const MessageCard: React.FC<MessageCardProps> = ({ message }) => {
-  const { textContent, toolUseContent, badgeType, toolNames } = parseMessage(message);
+export const MessageCard: React.FC<MessageCardProps> = ({ message, searchTerm }) => {
+  const { textContent, toolUseContent, badgeType, toolNames } = parseMessage(message, searchTerm);
   const isBackgroundMessageByDefault = message.isMeta
     || toolUseContent.length > 0
     || badgeType === BadgeType.Hook

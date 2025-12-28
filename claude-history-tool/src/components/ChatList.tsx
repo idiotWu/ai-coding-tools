@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
+import { VList } from 'virtua';
 import { IoClose } from 'react-icons/io5';
 import { ProjectDirectorySummary, ChatSessionSummary } from '../types';
+
+type ListItem =
+  | { type: 'project'; project: ProjectDirectorySummary; isExpanded: boolean }
+  | { type: 'session'; session: ChatSessionSummary; projectPath: string };
 
 interface ChatListProps {
   projects: ProjectDirectorySummary[];
@@ -54,25 +59,40 @@ export const ChatList: React.FC<ChatListProps> = ({ projects, onSessionSelect, o
     if (!searchTerm.trim()) {
       return projects;
     }
-    
+
     const searchLower = searchTerm.toLowerCase();
     return projects.filter(project => {
       const projectName = getProjectDisplayName(project).toLowerCase();
       const hasMatchingProject = projectName.includes(searchLower);
-      
+
       const hasMatchingSessions = false;
       // future:Also check if any session in the project matches
-      
+
       /*
       const hasMatchingSessions = project.sessions.some(session => {
         const firstMessage = getFirstUserMessage(session).toLowerCase();
         return firstMessage.includes(searchLower);
       });
       */
-      
+
       return hasMatchingProject || hasMatchingSessions;
     });
   }, [projects, searchTerm, getProjectDisplayName]);
+
+  // Flatten projects and sessions into a single list for virtual scrolling
+  const flattenedItems = useMemo((): ListItem[] => {
+    const items: ListItem[] = [];
+    for (const project of filteredProjects) {
+      const isExpanded = expandedProjects.has(project.path);
+      items.push({ type: 'project', project, isExpanded });
+      if (isExpanded) {
+        for (const session of project.sessions) {
+          items.push({ type: 'session', session, projectPath: project.path });
+        }
+      }
+    }
+    return items;
+  }, [filteredProjects, expandedProjects]);
 
   const toggleProject = (projectPath: string) => {
     const newExpanded = new Set(expandedProjects);
@@ -125,28 +145,32 @@ export const ChatList: React.FC<ChatListProps> = ({ projects, onSessionSelect, o
           <p>No chat history found in ~/.claude/projects</p>
         </div>
       ) : (
-        filteredProjects.map((project) => {
-          const isExpanded = expandedProjects.has(project.path);
-          return (
-            <div key={project.path} className="ChatList__project">
-              <div
-                onClick={() => toggleProject(project.path)}
-                className="ChatList__project-header"
-              >
-                <span className={`ChatList__project-arrow ${isExpanded ? 'ChatList__project-arrow--expanded' : ''}`}>
-                  ▶
-                </span>
-                <span className="ChatList__project-name">
-                  {getProjectDisplayName(project)}
-                </span>
-                <span className="ChatList__project-count">
-                  ({project.sessions.length} session{project.sessions.length !== 1 ? 's' : ''})
-                </span>
-              </div>
-              
-              {isExpanded && project.sessions.map((session) => (
+        <VList className="ChatList__vlist">
+          {flattenedItems.map((item) => {
+            if (item.type === 'project') {
+              const { project, isExpanded } = item;
+              return (
+                <div
+                  key={`project-${project.path}`}
+                  onClick={() => toggleProject(project.path)}
+                  className="ChatList__project-header"
+                >
+                  <span className={`ChatList__project-arrow ${isExpanded ? 'ChatList__project-arrow--expanded' : ''}`}>
+                    ▶
+                  </span>
+                  <span className="ChatList__project-name">
+                    {getProjectDisplayName(project)}
+                  </span>
+                  <span className="ChatList__project-count">
+                    ({project.sessions.length} session{project.sessions.length !== 1 ? 's' : ''})
+                  </span>
+                </div>
+              );
+            } else {
+              const { session } = item;
+              return (
                 <a
-                  key={session.sessionId}
+                  key={`session-${session.sessionId}`}
                   href={`/chat/${session.sessionId}`}
                   onClick={(e) => {
                     e.preventDefault();
@@ -157,16 +181,15 @@ export const ChatList: React.FC<ChatListProps> = ({ projects, onSessionSelect, o
                   <div className="ChatList__session-content">
                     {session.firstUserMessage}
                   </div>
-                  
                   <div className="ChatList__session-meta">
                     <span>{formatTimestamp(session.lastMessageTimestamp)}</span>
                     <span>{session.messageCount} messages</span>
                   </div>
                 </a>
-              ))}
-            </div>
-          );
-        })
+              );
+            }
+          })}
+        </VList>
       )}
     </div>
   );
