@@ -1,8 +1,10 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 module.exports = {
-  target: 'electron-renderer',
+  target: isDev ? 'web' : 'electron-renderer',
   mode: process.env.NODE_ENV || 'development',
   entry: './src/renderer/App.tsx',
   output: {

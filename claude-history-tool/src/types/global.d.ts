@@ -1,10 +1,10 @@
 import { AnalyticsData } from '../main/getAnalytics';
-import { ProjectDirectory, ChatMessage } from './index';
+import { ProjectDirectorySummary, ChatMessage } from './index';
 
 declare global {
   interface Window {
     electronAPI: {
-      getChatSessions: () => Promise<ProjectDirectory[]>;
+      getChatSessions: () => Promise<ProjectDirectorySummary[]>;
       getSessionDetails: (sessionId: string, projectName: string) => Promise<ChatMessage[]>;
       getAnalytics: () => Promise<AnalyticsData>;
       isNotificationDismissed: (contentCode: string) => Promise<boolean>;

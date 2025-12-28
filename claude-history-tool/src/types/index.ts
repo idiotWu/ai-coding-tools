@@ -40,13 +40,23 @@ export interface ChatMessage {
   internalMessageType?: 'terminal_control' | 'hook';
 }
 
-export interface ChatSession {
+export interface ChatSessionSummary {
   sessionId: string;
-  messages: ChatMessage[];
   firstMessageTimestamp: string;
   lastMessageTimestamp: string;
   projectPath: string;
   messageCount: number;
+  firstUserMessage: string;
+  cwd?: string;
+}
+
+export interface ChatSession extends ChatSessionSummary {
+  messages: ChatMessage[];
+}
+
+export interface ProjectDirectorySummary {
+  path: string;
+  sessions: ChatSessionSummary[];
 }
 
 export interface ProjectDirectory {

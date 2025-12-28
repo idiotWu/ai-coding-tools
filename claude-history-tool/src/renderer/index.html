@@ -16,6 +16,15 @@
     </style>
   </head>
   <body>
+    <script>
+      window.global = window;
+      // Suppress ResizeObserver loop error (common with virtual scroll libraries)
+      const resizeObserverErr = window.onerror;
+      window.onerror = function(msg) {
+        if (msg && msg.includes('ResizeObserver loop')) return true;
+        return resizeObserverErr ? resizeObserverErr.apply(this, arguments) : false;
+      };
+    </script>
     <div id="root"></div>
   </body>
 </html>

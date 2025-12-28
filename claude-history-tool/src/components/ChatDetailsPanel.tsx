@@ -1,9 +1,9 @@
 import React from 'react';
-import { ChatSession } from '../types';
+import { ChatSessionSummary } from '../types';
 import { ChatSessionView } from './ChatSessionView';
 
 interface ChatDetailsPanelProps {
-  session: ChatSession;
+  session: ChatSessionSummary;
   onBackToList: () => void;
 }
 

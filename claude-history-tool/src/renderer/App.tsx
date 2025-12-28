@@ -10,7 +10,7 @@ import { ChatDetailsPanel } from '../components/ChatDetailsPanel';
 import { UpgradeBanner } from '../components/UpgradeBanner';
 import { UpgradeModal } from '../components/UpgradeModal';
 import { useUpgradeNotice } from '../hooks/useUpgradeNotice';
-import { ChatSession } from '../types';
+import { ChatSessionSummary } from '../types';
 import '../style.scss';
 
 const ChatListPage: React.FC = () => {
@@ -51,7 +51,7 @@ const ChatListPage: React.FC = () => {
     );
   }
 
-  const handleSessionSelect = (session: ChatSession) => {
+  const handleSessionSelect = (session: ChatSessionSummary) => {
     console.log('[ChatListPage] handleSessionSelect:', session);
     navigate(`/chat/${session.sessionId}`, { 
       state: { 

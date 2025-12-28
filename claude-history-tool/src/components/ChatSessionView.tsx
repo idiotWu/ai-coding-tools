@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ChatSession, ChatMessage } from '../types';
+import { VList } from 'virtua';
+import { ChatSessionSummary, ChatMessage } from '../types';
 import { MessageCard } from './MessageCard';
 import { LoadingSpinner } from './LoadingSpinner';
 
 interface ChatViewerProps {
-  session: ChatSession;
+  session: ChatSessionSummary;
 }
 
 export const ChatSessionView: React.FC<ChatViewerProps> = ({ session }) => {
@@ -32,13 +33,10 @@ export const ChatSessionView: React.FC<ChatViewerProps> = ({ session }) => {
     return date.toLocaleString();
   };
 
-  const getProjectDisplayName = (session: ChatSession) => {
-    // Try to get the actual path from the first message's cwd
-    if (session.messages.length > 0) {
-      const firstMessage = session.messages[0];
-      if (firstMessage.cwd) {
-        return firstMessage.cwd;
-      }
+  const getProjectDisplayName = (session: ChatSessionSummary) => {
+    // Use cwd from session summary
+    if (session.cwd) {
+      return session.cwd;
     }
     // Fallback to the encoded directory name conversion
     return session.projectPath.replace(/^-Users-[^-]+-/, '').replace(/-/g, '/');
@@ -69,14 +67,14 @@ export const ChatSessionView: React.FC<ChatViewerProps> = ({ session }) => {
         </div>
       </div>
 
-      <div className="ChatViewer__content">
+      <VList className="ChatViewer__content">
         {messages.map((message, index) => (
-          <MessageCard 
-            key={`${message.uuid}-${index}`} 
-            message={message} 
+          <MessageCard
+            key={`${message.uuid}-${index}`}
+            message={message}
           />
         ))}
-      </div>
+      </VList>
     </div>
   );
 };

@@ -1,24 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { IoClose } from 'react-icons/io5';
-import { ProjectDirectory, ChatSession } from '../types';
+import { ProjectDirectorySummary, ChatSessionSummary } from '../types';
 
 interface ChatListProps {
-  projects: ProjectDirectory[];
-  onSessionSelect: (session: ChatSession) => void;
+  projects: ProjectDirectorySummary[];
+  onSessionSelect: (session: ChatSessionSummary) => void;
   onRefresh?: () => void;
 }
-
-  const getFirstUserMessage = (session: ChatSession): string => {
-    const firstUserMessage = session.messages.find(msg => 
-      msg.type === 'user' && !msg.isMeta && !msg.internalMessageType
-    );
-
-    if (firstUserMessage && firstUserMessage.message && typeof firstUserMessage.message.content === 'string') {
-      return firstUserMessage.message.content.slice(0, 100) + '...';
-    }
-    return 'No user message found';
-  };
 
 export const ChatList: React.FC<ChatListProps> = ({ projects, onSessionSelect, onRefresh }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -51,13 +40,10 @@ export const ChatList: React.FC<ChatListProps> = ({ projects, onSessionSelect, o
     }
   }, [expandedProjects, setSearchParams]);
 
-  const getProjectDisplayName = useCallback((project: ProjectDirectory) => {
-    // Try to get the actual path from the first message's cwd
-    if (project.sessions.length > 0 && project.sessions[0].messages.length > 0) {
-      const firstMessage = project.sessions[0].messages[0];
-      if (firstMessage.cwd) {
-        return firstMessage.cwd;
-      }
+  const getProjectDisplayName = useCallback((project: ProjectDirectorySummary) => {
+    // Try to get the actual path from the first session's cwd
+    if (project.sessions.length > 0 && project.sessions[0].cwd) {
+      return project.sessions[0].cwd;
     }
     // Fallback to the encoded directory name conversion
     return project.path.replace(/^-Users-[^-]+-/, '').replace(/-/g, '/');
@@ -169,7 +155,7 @@ export const ChatList: React.FC<ChatListProps> = ({ projects, onSessionSelect, o
                   className="ChatList__session"
                 >
                   <div className="ChatList__session-content">
-                    {getFirstUserMessage(session)}
+                    {session.firstUserMessage}
                   </div>
                   
                   <div className="ChatList__session-meta">
