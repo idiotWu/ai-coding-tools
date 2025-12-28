@@ -3,7 +3,7 @@ import { VList } from 'virtua';
 import { IoClose, IoSearch, IoDownloadOutline, IoChevronDown, IoChevronUp, IoInformationCircleOutline } from 'react-icons/io5';
 import { ChatSessionSummary, ChatMessage } from '../types';
 import { SessionContext } from '../types/global.d';
-import { MessageCard } from './MessageCard';
+import { MessageCard, ToolResultMap } from './MessageCard';
 import { LoadingSpinner } from './LoadingSpinner';
 
 interface ChatViewerProps {
@@ -83,13 +83,87 @@ export const ChatSessionView: React.FC<ChatViewerProps> = ({ session }) => {
     return session.projectPath.replace(/^-Users-[^-]+-/, '').replace(/-/g, '/');
   };
 
+  // Build a map of tool_use_id -> tool_result content from all messages
+  const toolResultMap = useMemo<ToolResultMap>(() => {
+    const map: ToolResultMap = new Map();
+    for (const message of messages) {
+      const content = message.message?.content;
+      if (Array.isArray(content)) {
+        for (const item of content) {
+          if (typeof item === 'object' && item !== null && item.type === 'tool_result' && item.tool_use_id) {
+            map.set(item.tool_use_id, {
+              tool_use_id: item.tool_use_id,
+              content: (item as { content?: unknown }).content,
+            });
+          }
+        }
+      }
+    }
+    return map;
+  }, [messages]);
+
+  // Track which tool_use_ids have been aggregated (shown with their tool_use)
+  const aggregatedToolResultIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const message of messages) {
+      const content = message.message?.content;
+      if (Array.isArray(content)) {
+        for (const item of content) {
+          if (typeof item === 'object' && item !== null && item.type === 'tool_use' && item.id) {
+            // If there's a matching tool_result in the map, mark it as aggregated
+            if (toolResultMap.has(item.id)) {
+              ids.add(item.id);
+            }
+          }
+        }
+      }
+    }
+    return ids;
+  }, [messages, toolResultMap]);
+
+  // Check if a message only contains tool_results that have been aggregated
+  const isMessageFullyAggregated = (message: ChatMessage): boolean => {
+    const content = message.message?.content;
+    if (!Array.isArray(content)) return false;
+
+    // Check if all items in this message are either:
+    // 1. tool_result items that have been aggregated
+    // 2. Non-content items (we should still show other content)
+    const toolResultItems = content.filter(
+      item => typeof item === 'object' && item !== null && item.type === 'tool_result'
+    );
+
+    // If no tool_result items, don't hide the message
+    if (toolResultItems.length === 0) return false;
+
+    // Check if ALL tool_results are aggregated
+    const allAggregated = toolResultItems.every(
+      item => typeof item === 'object' && item !== null &&
+        item.type === 'tool_result' && item.tool_use_id &&
+        aggregatedToolResultIds.has(item.tool_use_id)
+    );
+
+    // Only hide if message contains ONLY tool_results (no text or other content)
+    const hasOtherContent = content.some(
+      item => typeof item === 'string' ||
+        (typeof item === 'object' && item !== null && item.type !== 'tool_result')
+    );
+
+    return allAggregated && !hasOtherContent;
+  };
+
   const filteredMessages = useMemo(() => {
+    let result = messages;
+
+    // Filter out messages that only contain aggregated tool_results
+    result = result.filter(msg => !isMessageFullyAggregated(msg));
+
     if (!searchTerm.trim()) {
-      return messages;
+      return result;
     }
     const term = searchTerm.toLowerCase();
-    return messages.filter(msg => getMessageText(msg).toLowerCase().includes(term));
-  }, [messages, searchTerm]);
+    return result.filter(msg => getMessageText(msg).toLowerCase().includes(term));
+  }, [messages, searchTerm, aggregatedToolResultIds]);
 
   const handleExport = async (format: 'markdown' | 'json') => {
     setExporting(true);
@@ -227,6 +301,7 @@ export const ChatSessionView: React.FC<ChatViewerProps> = ({ session }) => {
             key={`${message.uuid}-${index}`}
             message={message}
             searchTerm={searchTerm}
+            externalToolResults={toolResultMap}
           />
         ))}
       </VList>

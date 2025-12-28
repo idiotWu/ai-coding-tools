@@ -5,9 +5,17 @@ import { Badge, BadgeType } from './Badge';
 import { Tooltip } from './Tooltip';
 import { CodeBlock, parseMarkdownCodeBlocks } from './CodeBlock';
 
+export interface ToolResultItem {
+  tool_use_id: string;
+  content: unknown;
+}
+
+export type ToolResultMap = Map<string, ToolResultItem>;
+
 interface MessageCardProps {
   message: ChatMessage;
   searchTerm?: string;
+  externalToolResults?: ToolResultMap;
 }
 
 function highlightText(text: string, searchTerm: string): React.ReactNode {
@@ -46,11 +54,17 @@ function renderTextWithCodeBlocks(text: string, key: string, searchTerm?: string
   });
 }
 
+interface ToolInfo {
+  name: string;
+  keyParams: string | null;
+}
+
 interface ParsedMessageContent {
-  textContent: Array<any>;
-  toolUseContent: Array<any>;
+  textContent: Array<React.ReactNode>;
+  toolUseContent: Array<React.ReactNode>;
   badgeType: BadgeType;
   toolNames: string[];
+  toolInfos: ToolInfo[];
 }
 
 interface ToolUseItem {
@@ -59,15 +73,156 @@ interface ToolUseItem {
   input: unknown;
 }
 
-interface ToolResultItem {
-  tool_use_id: string;
-  content: unknown;
+// Extract key parameters to show in tool header based on tool type
+function getToolKeyParams(toolName: string, input: unknown): string | null {
+  if (!input || typeof input !== 'object') return null;
+
+  const inputObj = input as Record<string, unknown>;
+
+  switch (toolName) {
+    case 'Read':
+    case 'Write':
+      if (inputObj.file_path) {
+        const path = String(inputObj.file_path);
+        // Show just the filename or last part of path
+        const parts = path.split('/');
+        return parts[parts.length - 1] || path;
+      }
+      break;
+
+    case 'Edit':
+      if (inputObj.file_path) {
+        const path = String(inputObj.file_path);
+        const parts = path.split('/');
+        return parts[parts.length - 1] || path;
+      }
+      break;
+
+    case 'Bash':
+      if (inputObj.command) {
+        const cmd = String(inputObj.command);
+        // Truncate long commands
+        return cmd.length > 60 ? cmd.slice(0, 60) + '...' : cmd;
+      }
+      break;
+
+    case 'Grep':
+      if (inputObj.pattern) {
+        const pattern = String(inputObj.pattern);
+        const truncated = pattern.length > 40 ? pattern.slice(0, 40) + '...' : pattern;
+        if (inputObj.path) {
+          const path = String(inputObj.path);
+          const pathParts = path.split('/');
+          return `"${truncated}" in ${pathParts[pathParts.length - 1] || path}`;
+        }
+        return `"${truncated}"`;
+      }
+      break;
+
+    case 'Glob':
+      if (inputObj.pattern) {
+        const pattern = String(inputObj.pattern);
+        if (inputObj.path) {
+          const path = String(inputObj.path);
+          const pathParts = path.split('/');
+          return `${pattern} in ${pathParts[pathParts.length - 1] || path}`;
+        }
+        return pattern;
+      }
+      break;
+
+    case 'Task':
+      if (inputObj.description) {
+        return String(inputObj.description);
+      }
+      break;
+
+    case 'WebFetch':
+      if (inputObj.url) {
+        const url = String(inputObj.url);
+        // Show domain only
+        try {
+          const domain = new URL(url).hostname;
+          return domain;
+        } catch {
+          return url.slice(0, 40);
+        }
+      }
+      break;
+
+    case 'TodoWrite':
+      if (Array.isArray(inputObj.todos)) {
+        return `${inputObj.todos.length} item(s)`;
+      }
+      break;
+
+    case 'AskUserQuestion':
+      if (Array.isArray(inputObj.questions) && inputObj.questions.length > 0) {
+        const firstQ = inputObj.questions[0];
+        if (typeof firstQ === 'object' && firstQ && 'question' in firstQ) {
+          const q = String((firstQ as Record<string, unknown>).question);
+          return q.length > 50 ? q.slice(0, 50) + '...' : q;
+        }
+      }
+      break;
+
+    case 'NotebookEdit':
+      if (inputObj.notebook_path) {
+        const path = String(inputObj.notebook_path);
+        const parts = path.split('/');
+        return parts[parts.length - 1] || path;
+      }
+      break;
+
+    default:
+      // For unknown tools (including MCP tools), try to extract meaningful params
+      // Try common parameter names in order of priority
+      const paramPriority = [
+        'file_path', 'path', 'url', 'query', 'command', 'name', 'title',
+        'target', 'message', 'content', 'text', 'description', 'input'
+      ];
+
+      for (const param of paramPriority) {
+        if (inputObj[param] !== undefined && inputObj[param] !== null) {
+          const value = String(inputObj[param]);
+          if (value.trim()) {
+            // For paths, show just filename
+            if (param.includes('path') || param === 'file_path') {
+              const parts = value.split('/');
+              return parts[parts.length - 1] || value;
+            }
+            // For URLs, show domain
+            if (param === 'url') {
+              try {
+                return new URL(value).hostname;
+              } catch {
+                return value.slice(0, 40);
+              }
+            }
+            // For other params, truncate if needed
+            return value.length > 50 ? value.slice(0, 50) + '...' : value;
+          }
+        }
+      }
+
+      // If no common params found, try to show first string value from input
+      for (const [key, val] of Object.entries(inputObj)) {
+        if (typeof val === 'string' && val.trim() && !key.startsWith('_')) {
+          const truncated = val.length > 50 ? val.slice(0, 50) + '...' : val;
+          return truncated;
+        }
+      }
+      break;
+  }
+
+  return null;
 }
 
-function parseMessage(message: ChatMessage, searchTerm?: string): ParsedMessageContent {
+function parseMessage(message: ChatMessage, searchTerm?: string, externalToolResults?: ToolResultMap): ParsedMessageContent {
   const textContent: Array<React.ReactNode> = [];
   const toolUseContent: Array<React.ReactNode> = [];
   const toolNames: string[] = [];
+  const toolInfos: ToolInfo[] = [];
 
   let badgeType: BadgeType =
   message.type === 'user' ? BadgeType.User : BadgeType.Assistant;
@@ -81,9 +236,9 @@ function parseMessage(message: ChatMessage, searchTerm?: string): ParsedMessageC
       </React.Fragment>
     );
   } else if (Array.isArray(messageContent)) {
-      // First pass: collect all tool_use and tool_result items
+      // First pass: collect all tool_use and tool_result items from THIS message
       const toolUseMap = new Map<string, ToolUseItem>();
-      const toolResultMap = new Map<string, ToolResultItem>();
+      const internalToolResultMap = new Map<string, ToolResultItem>();
       const processedToolIds = new Set<string>();
 
       for (const contentItem of messageContent) {
@@ -96,7 +251,7 @@ function parseMessage(message: ChatMessage, searchTerm?: string): ParsedMessageC
             });
           } else if (contentItem.type === 'tool_result' && contentItem.tool_use_id) {
             const resultContent = (contentItem as { content?: unknown }).content;
-            toolResultMap.set(contentItem.tool_use_id, {
+            internalToolResultMap.set(contentItem.tool_use_id, {
               tool_use_id: contentItem.tool_use_id,
               content: resultContent,
             });
@@ -120,18 +275,29 @@ function parseMessage(message: ChatMessage, searchTerm?: string): ParsedMessageC
 
         switch (contentItem.type) {
           case 'tool_use': {
+            const toolName = contentItem.name || 'Unknown';
+            const keyParams = getToolKeyParams(toolName, contentItem.input);
+
             if (contentItem.name) {
               toolNames.push(contentItem.name);
             }
+            toolInfos.push({ name: toolName, keyParams });
+
             const toolId = contentItem.id;
             if (toolId && !processedToolIds.has(toolId)) {
               processedToolIds.add(toolId);
-              const matchingResult = toolResultMap.get(toolId);
+              // Look up result from internal map first, then external map
+              const matchingResult = internalToolResultMap.get(toolId) || externalToolResults?.get(toolId);
 
               toolUseContent.push(
                 <div key={`tool-${toolId}`} className="MessageCard__tool-block">
                   <div className="MessageCard__tool-use-section">
-                    <div className="MessageCard__tool-name">🔧 {contentItem.name}</div>
+                    <div className="MessageCard__tool-name">
+                      🔧 {contentItem.name}
+                      {keyParams && (
+                        <span className="MessageCard__tool-params">{keyParams}</span>
+                      )}
+                    </div>
                     <CodeBlock
                       code={JSON.stringify(contentItem.input, null, 2)}
                       language="json"
@@ -156,8 +322,14 @@ function parseMessage(message: ChatMessage, searchTerm?: string): ParsedMessageC
           }
 
           case 'tool_result': {
-            // Only render standalone if no matching tool_use was found
+            // Only render standalone if no matching tool_use was found (in this message or elsewhere)
             const toolUseId = contentItem.tool_use_id;
+
+            // Skip rendering if this result is in the external map (will be shown with its tool_use)
+            if (toolUseId && externalToolResults?.has(toolUseId)) {
+              break;
+            }
+
             if (toolUseId && !toolUseMap.has(toolUseId) && !processedToolIds.has(toolUseId)) {
               processedToolIds.add(toolUseId);
               const resultContent = (contentItem as { content?: unknown }).content;
@@ -218,12 +390,13 @@ function parseMessage(message: ChatMessage, searchTerm?: string): ParsedMessageC
     textContent,
     toolUseContent,
     badgeType,
-    toolNames
+    toolNames,
+    toolInfos
   };
 }
 
-export const MessageCard: React.FC<MessageCardProps> = ({ message, searchTerm }) => {
-  const { textContent, toolUseContent, badgeType, toolNames } = parseMessage(message, searchTerm);
+export const MessageCard: React.FC<MessageCardProps> = ({ message, searchTerm, externalToolResults }) => {
+  const { textContent, toolUseContent, badgeType, toolNames, toolInfos } = parseMessage(message, searchTerm, externalToolResults);
   const isBackgroundMessageByDefault = message.isMeta
     || toolUseContent.length > 0
     || badgeType === BadgeType.Hook
@@ -255,16 +428,18 @@ export const MessageCard: React.FC<MessageCardProps> = ({ message, searchTerm })
     );
   };
 
-  // Parse the message content into a list of text and tool use/result items
-
-  // Determine if this should use background styling (less prominent)
-
+  // Determine message alignment for bubble layout
+  const isUserMessage = badgeType === BadgeType.User;
   const isForegroundMessage = contentExpanded || fullJsonExpanded;
 
-  const cardClassName = isForegroundMessage ? "MessageCard message-foreground" : "MessageCard message-background";
+  const cardClasses = [
+    'MessageCard',
+    isForegroundMessage ? 'message-foreground' : 'message-background',
+    isUserMessage ? 'MessageCard--user' : 'MessageCard--agent'
+  ].join(' ');
 
   return (
-    <div className={cardClassName} onClick={(evt) => {
+    <div className={cardClasses} onClick={(evt) => {
       setContentExpanded(!contentExpanded)
       evt.stopPropagation();
     }}>
@@ -272,24 +447,24 @@ export const MessageCard: React.FC<MessageCardProps> = ({ message, searchTerm })
         <div className="header-left">
           <Badge type={badgeType} className="badge" toolNames={toolNames} />
         </div>
-        
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span className="timestamp">
             {formatTimestamp(message.timestamp)}
           </span>
           {message.message?.usage && (
             <Tooltip content={renderTokenUsage()}>
-              <FaDeezer 
-                style={{ 
-                  cursor: 'pointer', 
+              <FaDeezer
+                style={{
+                  cursor: 'pointer',
                   color: 'var(--color-text-secondary)',
                   fontSize: '14px'
-                }} 
+                }}
               />
             </Tooltip>
           )}
           <Tooltip content="See Full JSON">
-            <FaMagnifyingGlassPlus 
+            <FaMagnifyingGlassPlus
               onClick={(evt) => {
                 setFullJsonExpanded(!fullJsonExpanded)
                 evt.stopPropagation();
@@ -304,23 +479,35 @@ export const MessageCard: React.FC<MessageCardProps> = ({ message, searchTerm })
         </div>
       </div>
 
-      {contentExpanded && (
-        <>
-          <div onClick={(evt) => evt.stopPropagation()}>
-            {textContent}
-            {toolUseContent}
+      {/* Full JSON at top when expanded */}
+      {fullJsonExpanded && (
+        <div className="MessageCard__full-json" onClick={(evt) => evt.stopPropagation()}>
+          <div className="MessageCard__full-json-header">Full Event JSON</div>
+          <div className="MessageCard__full-json-content">
+            <CodeBlock
+              code={JSON.stringify(message, null, 2)}
+              language="json"
+            />
           </div>
-        </>
+        </div>
       )}
 
-      {/* temp - show the full message for debugging */} 
-      {fullJsonExpanded && (
-        <>
-          <h3>Full Event JSON:</h3>
-        <pre className="full-message">
-          {JSON.stringify(message, null, 2)}
-        </pre>
-        </>
+      {/* Show tool key params in header (visible even when collapsed) - only show tools that have params */}
+      {toolInfos.some(info => info.keyParams) && !contentExpanded && !fullJsonExpanded && (
+        <div className="MessageCard__tool-preview">
+          {toolInfos.filter(info => info.keyParams).map((info, idx) => (
+            <div key={idx} className="MessageCard__tool-preview-item">
+              <span className="MessageCard__tool-preview-params">{info.keyParams}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {contentExpanded && !fullJsonExpanded && (
+        <div onClick={(evt) => evt.stopPropagation()}>
+          {textContent}
+          {toolUseContent}
+        </div>
       )}
     </div>
   );

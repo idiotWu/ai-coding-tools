@@ -534,7 +534,92 @@ h1, h2, h3, h4, h5, h6 {
     padding: $spacing-sm;
     box-shadow: none;
   }
-  
+
+  // Bubble layout styles
+  &--user {
+    margin-left: 15%;
+    background-color: $color-info-light;
+    border-color: $color-info;
+
+    &.message-foreground {
+      background-color: $color-info-light;
+    }
+
+    &.message-background {
+      background-color: rgba($color-info-light, 0.5);
+    }
+  }
+
+  &--agent {
+    margin-right: 15%;
+  }
+
+  // Tool preview in header (visible when collapsed)
+  .MessageCard__tool-preview {
+    margin-top: $spacing-xs;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .MessageCard__tool-preview-item {
+    display: flex;
+    align-items: baseline;
+    gap: $spacing-sm;
+    font-size: $font-size-xs;
+    flex-wrap: wrap;
+  }
+
+  .MessageCard__tool-preview-name {
+    color: $color-text-secondary;
+    font-weight: $font-weight-medium;
+  }
+
+  .MessageCard__tool-preview-params {
+    color: $color-text-tertiary;
+    font-family: $font-family-mono;
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 1px 4px;
+    border-radius: $radius-sm;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  // Full JSON display
+  .MessageCard__full-json {
+    margin-top: $spacing-sm;
+    border: 1px solid $color-border-primary;
+    border-radius: $radius-md;
+    overflow: hidden;
+  }
+
+  .MessageCard__full-json-header {
+    background-color: $color-bg-tertiary;
+    padding: $spacing-xs $spacing-sm;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-semibold;
+    color: $color-text-secondary;
+    border-bottom: 1px solid $color-border-primary;
+  }
+
+  .MessageCard__full-json-content {
+    max-height: 400px;
+    overflow: auto;
+
+    .CodeBlock {
+      margin: 0;
+      border: none;
+      border-radius: 0;
+
+      pre {
+        margin: 0;
+        border-radius: 0;
+      }
+    }
+  }
+
   .header {
     display: flex;
     justify-content: space-between;
@@ -690,6 +775,24 @@ h1, h2, h3, h4, h5, h6 {
       color: $color-info;
       margin-bottom: $spacing-xs;
       font-weight: $font-weight-semibold;
+      display: flex;
+      align-items: baseline;
+      gap: $spacing-sm;
+      flex-wrap: wrap;
+
+      .MessageCard__tool-params {
+        font-weight: $font-weight-normal;
+        color: $color-text-secondary;
+        font-size: $font-size-xs;
+        background-color: rgba(255, 255, 255, 0.6);
+        padding: 2px 6px;
+        border-radius: $radius-sm;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-family: $font-family-mono;
+      }
     }
   }
 
@@ -719,6 +822,24 @@ h1, h2, h3, h4, h5, h6 {
     color: $color-text-tertiary;
     margin-bottom: $spacing-xs;
     font-weight: $font-weight-medium;
+    display: flex;
+    align-items: baseline;
+    gap: $spacing-sm;
+    flex-wrap: wrap;
+
+    .MessageCard__tool-params {
+      font-weight: $font-weight-normal;
+      color: $color-text-secondary;
+      font-size: $font-size-xs;
+      background-color: rgba(0, 0, 0, 0.05);
+      padding: 2px 6px;
+      border-radius: $radius-sm;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: $font-family-mono;
+    }
   }
 
   .MessageCard__thinking {
