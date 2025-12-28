@@ -127,6 +127,18 @@ function parseMessage(message: ChatMessage, searchTerm?: string): ParsedMessageC
               </React.Fragment>
             );
             break;
+
+          case 'thinking':
+            textContent.push(
+              <div key={`thinking-${itemIndex}`} className="MessageCard__thinking">
+                <div className="MessageCard__thinking-header">💭 Thinking</div>
+                <div className="MessageCard__thinking-content">
+                  {searchTerm ? highlightText(contentItem.thinking || '', searchTerm) : contentItem.thinking}
+                </div>
+              </div>
+            );
+            badgeType = BadgeType.Thinking;
+            break;
         }
       }
   }
@@ -158,7 +170,8 @@ export const MessageCard: React.FC<MessageCardProps> = ({ message, searchTerm })
     || badgeType === BadgeType.Hook
     || badgeType === BadgeType.Tool
     || badgeType === BadgeType.ToolResult
-    || badgeType === BadgeType.Internal;
+    || badgeType === BadgeType.Internal
+    || badgeType === BadgeType.Thinking;
 
   const [contentExpanded, setContentExpanded] = useState(!isBackgroundMessageByDefault);
   const [fullJsonExpanded, setFullJsonExpanded] = useState(false);

@@ -10,11 +10,13 @@ export interface ChatMessage {
   message?: {
     role: 'user' | 'assistant';
     content: string | Array<{
-      type: 'text' | 'tool_use' | 'tool_result';
+      type: 'text' | 'tool_use' | 'tool_result' | 'thinking';
       text?: string;
+      thinking?: string;
+      signature?: string;
       id?: string;
       name?: string;
-      input?: any;
+      input?: unknown;
       tool_use_id?: string;
     }>;
     id?: string;

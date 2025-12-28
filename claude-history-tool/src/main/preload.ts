@@ -38,7 +38,16 @@ const electronAPI = {
 
   toggleFavorite: (sessionId: string, projectPath: string): Promise<boolean> =>
     ipcRenderer.invoke('toggle-favorite', sessionId, projectPath),
+
+  // Session context
+  getSessionContext: (cwd: string): Promise<SessionContext> =>
+    ipcRenderer.invoke('get-session-context', cwd),
 };
+
+export interface SessionContext {
+  claudeMd: string | null;
+  globalClaudeMd: string | null;
+}
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);
 

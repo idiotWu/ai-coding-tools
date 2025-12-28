@@ -683,6 +683,34 @@ h1, h2, h3, h4, h5, h6 {
     margin-bottom: $spacing-xs;
     font-weight: $font-weight-medium;
   }
+
+  .MessageCard__thinking {
+    margin: $spacing-md 0;
+    border: 1px solid #e9d5ff;
+    border-radius: $radius-md;
+    background-color: #faf5ff;
+    overflow: hidden;
+
+    .MessageCard__thinking-header {
+      padding: $spacing-xs $spacing-sm;
+      background-color: #f3e8ff;
+      font-size: $font-size-xs;
+      font-weight: $font-weight-medium;
+      color: #7c3aed;
+      border-bottom: 1px solid #e9d5ff;
+    }
+
+    .MessageCard__thinking-content {
+      padding: $spacing-md;
+      font-size: $font-size-sm;
+      color: $color-text-secondary;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      line-height: $line-height-relaxed;
+      max-height: 300px;
+      overflow: auto;
+    }
+  }
 }
 
 // Badge Component
@@ -721,6 +749,11 @@ h1, h2, h3, h4, h5, h6 {
   &--tool-result {
     background-color: $color-success-light;
     color: $color-success;
+  }
+
+  &--thinking {
+    background-color: #f3e8ff;
+    color: #7c3aed;
   }
 }
 
@@ -901,6 +934,85 @@ h1, h2, h3, h4, h5, h6 {
       &:not(:last-child) {
         border-bottom: 1px solid $color-border-primary;
       }
+    }
+  }
+
+  .ChatViewer__context-btn {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    padding: $spacing-xs $spacing-sm;
+    border: 1px solid $color-border-primary;
+    border-radius: $radius-sm;
+    background-color: $color-bg-primary;
+    color: $color-text-secondary;
+    font-size: $font-size-xs;
+    cursor: pointer;
+    transition: all $transition-fast;
+    flex-shrink: 0;
+
+    &:hover {
+      border-color: $color-primary;
+      color: $color-primary;
+    }
+
+    svg {
+      font-size: $font-size-md;
+    }
+  }
+
+  .ChatViewer__context-panel {
+    flex-shrink: 0;
+    max-height: 300px;
+    overflow: auto;
+    background-color: $color-bg-primary;
+    border-bottom: 1px solid $color-border-primary;
+    padding: $spacing-lg;
+
+    .ChatViewer__context-section {
+      margin-bottom: $spacing-lg;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      h4 {
+        font-size: $font-size-sm;
+        font-weight: $font-weight-semibold;
+        color: $color-text-primary;
+        margin-bottom: $spacing-sm;
+        display: flex;
+        align-items: center;
+        gap: $spacing-xs;
+      }
+    }
+
+    .ChatViewer__context-meta {
+      font-size: $font-size-xs;
+      color: $color-text-secondary;
+      line-height: $line-height-relaxed;
+
+      div {
+        margin-bottom: $spacing-xs;
+
+        strong {
+          color: $color-text-primary;
+        }
+      }
+    }
+
+    .ChatViewer__context-content {
+      background-color: $color-bg-tertiary;
+      border: 1px solid $color-border-primary;
+      border-radius: $radius-sm;
+      padding: $spacing-md;
+      font-family: $font-family-mono;
+      font-size: $font-size-xs;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      max-height: 200px;
+      overflow: auto;
+      margin: 0;
     }
   }
 }

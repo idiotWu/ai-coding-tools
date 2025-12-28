@@ -6,7 +6,8 @@ export enum BadgeType {
   Internal = 'internal',
   Hook = 'hook',
   Tool = 'tool',
-  ToolResult = 'tool-result'
+  ToolResult = 'tool-result',
+  Thinking = 'thinking'
 }
 
 interface BadgeProps {
@@ -30,6 +31,8 @@ export const Badge: React.FC<BadgeProps> = ({ type, className = '', toolNames = 
         return toolNames.length > 0 ? `🔧 Tool: ${toolNames.join(', ')}` : '🔧 Tool';
       case BadgeType.ToolResult:
         return '📤 ToolResult';
+      case BadgeType.Thinking:
+        return '💭 Thinking';
       default:
         return '';
     }
@@ -49,6 +52,8 @@ export const Badge: React.FC<BadgeProps> = ({ type, className = '', toolNames = 
         return 'Badge--tool';
       case BadgeType.ToolResult:
         return 'Badge--tool-result';
+      case BadgeType.Thinking:
+        return 'Badge--thinking';
       default:
         return '';
     }

@@ -108,3 +108,38 @@ ipcMain.handle('get-favorites', async (): Promise<FavoriteSession[]> => {
 ipcMain.handle('toggle-favorite', async (_, sessionId: string, projectPath: string): Promise<boolean> => {
   return toggleFavorite(sessionId, projectPath);
 });
+
+// Session context handler - get CLAUDE.md content for a project
+export interface SessionContext {
+  claudeMd: string | null;
+  globalClaudeMd: string | null;
+}
+
+ipcMain.handle('get-session-context', async (_, cwd: string): Promise<SessionContext> => {
+  const result: SessionContext = {
+    claudeMd: null,
+    globalClaudeMd: null,
+  };
+
+  // Try to read project CLAUDE.md
+  try {
+    const projectClaudeMdPath = path.join(cwd, 'CLAUDE.md');
+    if (fs.existsSync(projectClaudeMdPath)) {
+      result.claudeMd = fs.readFileSync(projectClaudeMdPath, 'utf-8');
+    }
+  } catch (error) {
+    console.error('Failed to read project CLAUDE.md:', error);
+  }
+
+  // Try to read global CLAUDE.md
+  try {
+    const globalClaudeMdPath = path.join(os.homedir(), '.claude', 'CLAUDE.md');
+    if (fs.existsSync(globalClaudeMdPath)) {
+      result.globalClaudeMd = fs.readFileSync(globalClaudeMdPath, 'utf-8');
+    }
+  } catch (error) {
+    console.error('Failed to read global CLAUDE.md:', error);
+  }
+
+  return result;
+});

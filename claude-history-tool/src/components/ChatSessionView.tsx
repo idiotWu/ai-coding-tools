@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { VList } from 'virtua';
-import { IoClose, IoSearch, IoDownloadOutline } from 'react-icons/io5';
+import { IoClose, IoSearch, IoDownloadOutline, IoChevronDown, IoChevronUp, IoInformationCircleOutline } from 'react-icons/io5';
 import { ChatSessionSummary, ChatMessage } from '../types';
+import { SessionContext } from '../types/global.d';
 import { MessageCard } from './MessageCard';
 import { LoadingSpinner } from './LoadingSpinner';
 
@@ -33,10 +34,28 @@ export const ChatSessionView: React.FC<ChatViewerProps> = ({ session }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [sessionContext, setSessionContext] = useState<SessionContext | null>(null);
+  const [showContext, setShowContext] = useState(false);
 
   useEffect(() => {
     loadSessionDetails();
   }, [session.sessionId]);
+
+  // Load session context when cwd is available
+  useEffect(() => {
+    if (session.cwd) {
+      loadSessionContext(session.cwd);
+    }
+  }, [session.cwd]);
+
+  const loadSessionContext = async (cwd: string) => {
+    try {
+      const context = await window.electronAPI.getSessionContext(cwd);
+      setSessionContext(context);
+    } catch (error) {
+      console.error('Failed to load session context:', error);
+    }
+  };
 
   const loadSessionDetails = async () => {
     try {
@@ -158,7 +177,49 @@ export const ChatSessionView: React.FC<ChatViewerProps> = ({ session }) => {
             </div>
           )}
         </div>
+        {(sessionContext?.claudeMd || sessionContext?.globalClaudeMd) && (
+          <button
+            className="ChatViewer__context-btn"
+            onClick={() => setShowContext(!showContext)}
+            title="Show session context"
+          >
+            <IoInformationCircleOutline />
+            Context
+            {showContext ? <IoChevronUp /> : <IoChevronDown />}
+          </button>
+        )}
       </div>
+
+      {showContext && sessionContext && (
+        <div className="ChatViewer__context-panel">
+          {session.cwd && (
+            <div className="ChatViewer__context-section">
+              <h4>Session Metadata</h4>
+              <div className="ChatViewer__context-meta">
+                <div><strong>Working Directory:</strong> {session.cwd}</div>
+                {messages[0]?.gitBranch && (
+                  <div><strong>Git Branch:</strong> {messages[0].gitBranch}</div>
+                )}
+                {messages[0]?.version && (
+                  <div><strong>Claude Code Version:</strong> {messages[0].version}</div>
+                )}
+              </div>
+            </div>
+          )}
+          {sessionContext.claudeMd && (
+            <div className="ChatViewer__context-section">
+              <h4>Project CLAUDE.md</h4>
+              <pre className="ChatViewer__context-content">{sessionContext.claudeMd}</pre>
+            </div>
+          )}
+          {sessionContext.globalClaudeMd && (
+            <div className="ChatViewer__context-section">
+              <h4>Global CLAUDE.md (~/.claude/CLAUDE.md)</h4>
+              <pre className="ChatViewer__context-content">{sessionContext.globalClaudeMd}</pre>
+            </div>
+          )}
+        </div>
+      )}
 
       <VList className="ChatViewer__content">
         {filteredMessages.map((message, index) => (

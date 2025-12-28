@@ -19,6 +19,11 @@ export interface FavoriteSession {
   starredAt: string;
 }
 
+export interface SessionContext {
+  claudeMd: string | null;
+  globalClaudeMd: string | null;
+}
+
 declare global {
   interface Window {
     electronAPI: {
@@ -36,6 +41,7 @@ declare global {
       ) => Promise<ExportResult>;
       getFavorites: () => Promise<FavoriteSession[]>;
       toggleFavorite: (sessionId: string, projectPath: string) => Promise<boolean>;
+      getSessionContext: (cwd: string) => Promise<SessionContext>;
     };
   }
 }
