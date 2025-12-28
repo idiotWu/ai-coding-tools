@@ -672,6 +672,43 @@ h1, h2, h3, h4, h5, h6 {
     border-radius: 2px;
   }
 
+  .MessageCard__tool-block {
+    margin: $spacing-md 0;
+    border: 1px solid $color-border-primary;
+    border-radius: $radius-md;
+    overflow: hidden;
+    background-color: $color-bg-primary;
+  }
+
+  .MessageCard__tool-use-section {
+    padding: $spacing-sm;
+    background-color: $color-info-light;
+    border-bottom: 1px solid $color-border-primary;
+
+    .MessageCard__tool-name {
+      font-size: $font-size-xs;
+      color: $color-info;
+      margin-bottom: $spacing-xs;
+      font-weight: $font-weight-semibold;
+    }
+  }
+
+  .MessageCard__tool-result-section {
+    padding: $spacing-sm;
+    background-color: $color-success-light;
+
+    .MessageCard__tool-result-label {
+      font-size: $font-size-xs;
+      color: $color-success;
+      margin-bottom: $spacing-xs;
+      font-weight: $font-weight-medium;
+    }
+
+    &.MessageCard__tool-result-standalone {
+      border-radius: $radius-md;
+    }
+  }
+
   .MessageCard__tool-use-block,
   .MessageCard__tool-result-block {
     margin: $spacing-sm 0;

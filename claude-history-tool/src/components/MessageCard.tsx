@@ -53,6 +53,17 @@ interface ParsedMessageContent {
   toolNames: string[];
 }
 
+interface ToolUseItem {
+  id: string;
+  name: string;
+  input: unknown;
+}
+
+interface ToolResultItem {
+  tool_use_id: string;
+  content: unknown;
+}
+
 function parseMessage(message: ChatMessage, searchTerm?: string): ParsedMessageContent {
   const textContent: Array<React.ReactNode> = [];
   const toolUseContent: Array<React.ReactNode> = [];
@@ -70,7 +81,30 @@ function parseMessage(message: ChatMessage, searchTerm?: string): ParsedMessageC
       </React.Fragment>
     );
   } else if (Array.isArray(messageContent)) {
+      // First pass: collect all tool_use and tool_result items
+      const toolUseMap = new Map<string, ToolUseItem>();
+      const toolResultMap = new Map<string, ToolResultItem>();
+      const processedToolIds = new Set<string>();
 
+      for (const contentItem of messageContent) {
+        if (typeof contentItem === 'object' && contentItem !== null) {
+          if (contentItem.type === 'tool_use' && contentItem.id) {
+            toolUseMap.set(contentItem.id, {
+              id: contentItem.id,
+              name: contentItem.name || 'Unknown',
+              input: contentItem.input,
+            });
+          } else if (contentItem.type === 'tool_result' && contentItem.tool_use_id) {
+            const resultContent = (contentItem as { content?: unknown }).content;
+            toolResultMap.set(contentItem.tool_use_id, {
+              tool_use_id: contentItem.tool_use_id,
+              content: resultContent,
+            });
+          }
+        }
+      }
+
+      // Second pass: render content with aggregated tool calls
       let itemIndex = 0;
       for (const contentItem of messageContent) {
         itemIndex++;
@@ -85,38 +119,63 @@ function parseMessage(message: ChatMessage, searchTerm?: string): ParsedMessageC
         }
 
         switch (contentItem.type) {
-          case 'tool_use':
+          case 'tool_use': {
             if (contentItem.name) {
               toolNames.push(contentItem.name);
             }
-            toolUseContent.push(
-              <div key={`tool-use-${itemIndex}`} className="MessageCard__tool-use-block">
-                <div className="MessageCard__tool-name">[Tool: {contentItem.name}]</div>
-                <CodeBlock
-                  code={JSON.stringify(contentItem.input, null, 2)}
-                  language="json"
-                />
-              </div>
-            );
+            const toolId = contentItem.id;
+            if (toolId && !processedToolIds.has(toolId)) {
+              processedToolIds.add(toolId);
+              const matchingResult = toolResultMap.get(toolId);
 
+              toolUseContent.push(
+                <div key={`tool-${toolId}`} className="MessageCard__tool-block">
+                  <div className="MessageCard__tool-use-section">
+                    <div className="MessageCard__tool-name">🔧 {contentItem.name}</div>
+                    <CodeBlock
+                      code={JSON.stringify(contentItem.input, null, 2)}
+                      language="json"
+                    />
+                  </div>
+                  {matchingResult && (
+                    <div className="MessageCard__tool-result-section">
+                      <div className="MessageCard__tool-result-label">↳ Result</div>
+                      <CodeBlock
+                        code={typeof matchingResult.content === 'string'
+                          ? matchingResult.content
+                          : JSON.stringify(matchingResult.content, null, 2)}
+                        language={typeof matchingResult.content === 'string' ? undefined : 'json'}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            }
             badgeType = BadgeType.Tool;
             break;
+          }
 
           case 'tool_result': {
-            // tool_result has a content property but it's not in the base type
-            const resultContent = (contentItem as { content?: unknown }).content;
-            toolUseContent.push(
-              <div key={`tool-result-${itemIndex}`} className="MessageCard__tool-result-block">
-                <div className="MessageCard__tool-name">[Tool Result]</div>
-                <CodeBlock
-                  code={typeof resultContent === 'string'
-                    ? resultContent
-                    : JSON.stringify(resultContent, null, 2)}
-                  language={typeof resultContent === 'string' ? undefined : 'json'}
-                />
-              </div>
-            );
-            badgeType = BadgeType.ToolResult;
+            // Only render standalone if no matching tool_use was found
+            const toolUseId = contentItem.tool_use_id;
+            if (toolUseId && !toolUseMap.has(toolUseId) && !processedToolIds.has(toolUseId)) {
+              processedToolIds.add(toolUseId);
+              const resultContent = (contentItem as { content?: unknown }).content;
+              toolUseContent.push(
+                <div key={`tool-result-${itemIndex}`} className="MessageCard__tool-block">
+                  <div className="MessageCard__tool-result-section MessageCard__tool-result-standalone">
+                    <div className="MessageCard__tool-result-label">📤 Tool Result</div>
+                    <CodeBlock
+                      code={typeof resultContent === 'string'
+                        ? resultContent
+                        : JSON.stringify(resultContent, null, 2)}
+                      language={typeof resultContent === 'string' ? undefined : 'json'}
+                    />
+                  </div>
+                </div>
+              );
+              badgeType = BadgeType.ToolResult;
+            }
             break;
           }
 
