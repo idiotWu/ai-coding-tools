@@ -16,6 +16,7 @@ interface MessageCardProps {
   message: ChatMessage;
   searchTerm?: string;
   externalToolResults?: ToolResultMap;
+  isCurrentMatch?: boolean;
 }
 
 function highlightText(text: string, searchTerm: string): React.ReactNode {
@@ -395,7 +396,7 @@ function parseMessage(message: ChatMessage, searchTerm?: string, externalToolRes
   };
 }
 
-export const MessageCard: React.FC<MessageCardProps> = ({ message, searchTerm, externalToolResults }) => {
+export const MessageCard: React.FC<MessageCardProps> = ({ message, searchTerm, externalToolResults, isCurrentMatch }) => {
   const { textContent, toolUseContent, badgeType, toolNames, toolInfos } = parseMessage(message, searchTerm, externalToolResults);
   const isBackgroundMessageByDefault = message.isMeta
     || toolUseContent.length > 0
@@ -435,8 +436,9 @@ export const MessageCard: React.FC<MessageCardProps> = ({ message, searchTerm, e
   const cardClasses = [
     'MessageCard',
     isForegroundMessage ? 'message-foreground' : 'message-background',
-    isUserMessage ? 'MessageCard--user' : 'MessageCard--agent'
-  ].join(' ');
+    isUserMessage ? 'MessageCard--user' : 'MessageCard--agent',
+    isCurrentMatch ? 'MessageCard--current-match' : ''
+  ].filter(Boolean).join(' ');
 
   return (
     <div className={cardClasses} onClick={(evt) => {

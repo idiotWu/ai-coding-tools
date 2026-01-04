@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useDeferredValue } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { VList } from 'virtua';
 import { IoClose, IoStar, IoStarOutline } from 'react-icons/io5';
 import { isWithinInterval, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { ProjectDirectorySummary, ChatSessionSummary } from '../types';
-import { FavoriteSession } from '../types/global.d';
 
 type FilterMode = 'all' | 'favorites' | 'date';
 
@@ -22,6 +21,7 @@ export const ChatList: React.FC<ChatListProps> = ({ projects, onSessionSelect, o
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [dateFrom, setDateFrom] = useState('');
@@ -113,8 +113,8 @@ export const ChatList: React.FC<ChatListProps> = ({ projects, onSessionSelect, o
     let result = projects;
 
     // Apply search filter
-    if (searchTerm.trim()) {
-      const searchLower = searchTerm.toLowerCase();
+    if (deferredSearchTerm.trim()) {
+      const searchLower = deferredSearchTerm.toLowerCase();
       result = result.map(project => {
         const projectName = getProjectDisplayName(project).toLowerCase();
         const hasMatchingProject = projectName.includes(searchLower);
@@ -159,7 +159,7 @@ export const ChatList: React.FC<ChatListProps> = ({ projects, onSessionSelect, o
     }
 
     return result;
-  }, [projects, searchTerm, getProjectDisplayName, filterMode, favorites, dateFrom, dateTo, isSessionInDateRange]);
+  }, [projects, deferredSearchTerm, getProjectDisplayName, filterMode, favorites, dateFrom, dateTo, isSessionInDateRange]);
 
   // Flatten projects and sessions into a single list for virtual scrolling
   const flattenedItems = useMemo((): ListItem[] => {

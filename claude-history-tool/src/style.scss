@@ -554,6 +554,11 @@ h1, h2, h3, h4, h5, h6 {
     margin-right: 15%;
   }
 
+  &--current-match {
+    outline: 2px solid $color-primary;
+    outline-offset: 2px;
+  }
+
   // Tool preview in header (visible when collapsed)
   .MessageCard__tool-preview {
     margin-top: $spacing-xs;
@@ -1009,6 +1014,30 @@ h1, h2, h3, h4, h5, h6 {
       font-size: $font-size-xs;
       color: $color-text-tertiary;
       white-space: nowrap;
+      min-width: 36px;
+      text-align: center;
+    }
+
+    .ChatViewer__search-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      background: none;
+      border: none;
+      color: $color-text-secondary;
+      cursor: pointer;
+      border-radius: $radius-sm;
+
+      &:hover:not(:disabled) {
+        background-color: $color-bg-tertiary;
+        color: $color-text-primary;
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
     }
   }
 

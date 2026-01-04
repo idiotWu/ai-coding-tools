@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/github.css';
 
@@ -9,16 +9,34 @@ interface CodeBlockProps {
 }
 
 export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, searchTerm }) => {
-  const codeRef = useRef<HTMLElement>(null);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (codeRef.current) {
-      // Reset the element for re-highlighting
-      codeRef.current.removeAttribute('data-highlighted');
-      hljs.highlightElement(codeRef.current);
+  // Use hljs.highlight() instead of highlightElement() to avoid direct DOM manipulation
+  const highlightedHtml = useMemo(() => {
+    if (searchTerm?.trim()) {
+      // When searching, return plain text with search highlights
+      // (syntax highlighting would interfere with search term highlighting)
+      const escaped = code
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      return escaped.replace(regex, '<mark class="search-highlight">$1</mark>');
     }
-  }, [code, language]);
+
+    try {
+      if (language && hljs.getLanguage(language)) {
+        return hljs.highlight(code, { language }).value;
+      }
+      return hljs.highlightAuto(code).value;
+    } catch {
+      // Fallback to escaped plain text
+      return code
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+  }, [code, language, searchTerm]);
 
   const handleCopy = async () => {
     try {
@@ -30,22 +48,6 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, searchTerm
     }
   };
 
-  // Highlight search term in code if present
-  const highlightSearchTerm = (text: string): React.ReactNode => {
-    if (!searchTerm?.trim()) return text;
-
-    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    const parts = text.split(regex);
-
-    return parts.map((part, i) =>
-      part.toLowerCase() === searchTerm.toLowerCase() ? (
-        <mark key={i} className="search-highlight">{part}</mark>
-      ) : (
-        part
-      )
-    );
-  };
-
   return (
     <div className="CodeBlock">
       <div className="CodeBlock__header">
@@ -55,9 +57,10 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language, searchTerm
         </button>
       </div>
       <pre className="CodeBlock__pre">
-        <code ref={codeRef} className={language ? `language-${language}` : ''}>
-          {searchTerm ? highlightSearchTerm(code) : code}
-        </code>
+        <code
+          className={language ? `language-${language}` : ''}
+          dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+        />
       </pre>
     </div>
   );

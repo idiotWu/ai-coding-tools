@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { VList } from 'virtua';
-import { IoClose, IoSearch, IoDownloadOutline, IoChevronDown, IoChevronUp, IoInformationCircleOutline } from 'react-icons/io5';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { VList, VListHandle } from 'virtua';
+import { IoClose, IoSearch, IoDownloadOutline, IoChevronDown, IoChevronUp, IoInformationCircleOutline, IoArrowUp, IoArrowDown } from 'react-icons/io5';
 import { ChatSessionSummary, ChatMessage } from '../types';
 import { SessionContext } from '../types/global.d';
 import { MessageCard, ToolResultMap } from './MessageCard';
@@ -32,10 +32,12 @@ export const ChatSessionView: React.FC<ChatViewerProps> = ({ session }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [sessionContext, setSessionContext] = useState<SessionContext | null>(null);
   const [showContext, setShowContext] = useState(false);
+  const vlistRef = useRef<VListHandle>(null);
 
   useEffect(() => {
     loadSessionDetails();
@@ -152,18 +154,68 @@ export const ChatSessionView: React.FC<ChatViewerProps> = ({ session }) => {
     return allAggregated && !hasOtherContent;
   };
 
-  const filteredMessages = useMemo(() => {
-    let result = messages;
+  // Messages with aggregated tool_results filtered out
+  const displayMessages = useMemo(() => {
+    return messages.filter(msg => !isMessageFullyAggregated(msg));
+  }, [messages, aggregatedToolResultIds]);
 
-    // Filter out messages that only contain aggregated tool_results
-    result = result.filter(msg => !isMessageFullyAggregated(msg));
-
-    if (!searchTerm.trim()) {
-      return result;
-    }
+  // Indices of messages that match the search term (within displayMessages)
+  const matchingIndices = useMemo(() => {
+    if (!searchTerm.trim()) return [];
     const term = searchTerm.toLowerCase();
-    return result.filter(msg => getMessageText(msg).toLowerCase().includes(term));
-  }, [messages, searchTerm, aggregatedToolResultIds]);
+    const indices: number[] = [];
+    displayMessages.forEach((msg, index) => {
+      if (getMessageText(msg).toLowerCase().includes(term)) {
+        indices.push(index);
+      }
+    });
+    return indices;
+  }, [displayMessages, searchTerm]);
+
+  // Reset current match index when search term changes
+  useEffect(() => {
+    setCurrentMatchIndex(0);
+  }, [searchTerm]);
+
+  // Navigate to match when index changes
+  useEffect(() => {
+    if (matchingIndices.length > 0 && vlistRef.current) {
+      const targetIndex = matchingIndices[currentMatchIndex];
+      if (targetIndex !== undefined) {
+        vlistRef.current.scrollToIndex(targetIndex, { align: 'center' });
+      }
+    }
+  }, [currentMatchIndex, matchingIndices]);
+
+  const goToNextMatch = useCallback(() => {
+    if (matchingIndices.length === 0) return;
+    setCurrentMatchIndex(prev => (prev + 1) % matchingIndices.length);
+  }, [matchingIndices.length]);
+
+  const goToPrevMatch = useCallback(() => {
+    if (matchingIndices.length === 0) return;
+    setCurrentMatchIndex(prev => (prev - 1 + matchingIndices.length) % matchingIndices.length);
+  }, [matchingIndices.length]);
+
+  // Handle keyboard shortcuts for search navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!searchTerm.trim()) return;
+
+      // Enter or F3 for next, Shift+Enter or Shift+F3 for previous
+      if (e.key === 'Enter' || e.key === 'F3') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          goToPrevMatch();
+        } else {
+          goToNextMatch();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [searchTerm, goToNextMatch, goToPrevMatch]);
 
   const handleExport = async (format: 'markdown' | 'json') => {
     setExporting(true);
@@ -216,18 +268,37 @@ export const ChatSessionView: React.FC<ChatViewerProps> = ({ session }) => {
             className="ChatViewer__search-input"
           />
           {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="ChatViewer__search-clear"
-              title="Clear search"
-            >
-              <IoClose />
-            </button>
-          )}
-          {searchTerm && (
-            <span className="ChatViewer__search-count">
-              {filteredMessages.length}/{messages.length}
-            </span>
+            <>
+              <span className="ChatViewer__search-count">
+                {matchingIndices.length > 0
+                  ? `${currentMatchIndex + 1}/${matchingIndices.length}`
+                  : '0/0'
+                }
+              </span>
+              <button
+                onClick={goToPrevMatch}
+                className="ChatViewer__search-nav"
+                title="Previous match (Shift+Enter)"
+                disabled={matchingIndices.length === 0}
+              >
+                <IoArrowUp />
+              </button>
+              <button
+                onClick={goToNextMatch}
+                className="ChatViewer__search-nav"
+                title="Next match (Enter)"
+                disabled={matchingIndices.length === 0}
+              >
+                <IoArrowDown />
+              </button>
+              <button
+                onClick={() => setSearchTerm('')}
+                className="ChatViewer__search-clear"
+                title="Clear search"
+              >
+                <IoClose />
+              </button>
+            </>
           )}
         </div>
         <div className="ChatViewer__export">
@@ -295,13 +366,14 @@ export const ChatSessionView: React.FC<ChatViewerProps> = ({ session }) => {
         </div>
       )}
 
-      <VList className="ChatViewer__content">
-        {filteredMessages.map((message, index) => (
+      <VList ref={vlistRef} className="ChatViewer__content">
+        {displayMessages.map((message, index) => (
           <MessageCard
             key={`${message.uuid}-${index}`}
             message={message}
             searchTerm={searchTerm}
             externalToolResults={toolResultMap}
+            isCurrentMatch={matchingIndices.length > 0 && matchingIndices[currentMatchIndex] === index}
           />
         ))}
       </VList>
